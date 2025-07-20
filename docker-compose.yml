@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  # API Server
+  api-server:
+    build: .
+    container_name: crypto-api-server
+    command: python api_server.py
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    runtime: nvidia
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./.env:/app/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - influxdb
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - trading-network
+
+  # Frontend
+  frontend:
+    build: ./frontend
+    container_name: crypto-frontend
+    ports:
+      - "3001:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api
+      - REACT_APP_WS_URL=ws://localhost:8000
+    depends_on:
+      - api-server
+    restart: unless-stopped
+    networks:
+      - trading-network
+
+  # Trading Bot (background worker)
+  trading-bot:
+    build: .
+    container_name: crypto-trading-bot
+    command: python main.py
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    runtime: nvidia
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./.env:/app/.env
+    depends_on:
+      - influxdb
+      - postgres
+      - redis
+      - api-server
+    restart: unless-stopped
+    networks:
+      - trading-network
+
+  influxdb:
+    image: influxdb:2.7-alpine
+    container_name: trading-influxdb
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=password123
+      - DOCKER_INFLUXDB_INIT_ORG=crypto-trading
+      - DOCKER_INFLUXDB_INIT_BUCKET=market-data
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=your-influxdb-token
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    ports:
+      - "8086:8086"
+    networks:
+      - trading-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: trading-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=crypto_trading
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - trading-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: trading-redis
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - trading-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: trading-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    depends_on:
+      - influxdb
+    networks:
+      - trading-network
+
+  # Nginx reverse proxy for production
+  nginx:
+    image: nginx:alpine
+    container_name: crypto-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - api-server
+    networks:
+      - trading-network
+    profiles:
+      - production
+
+volumes:
+  influxdb-data:
+  influxdb-config:
+  postgres-data:
+  redis-data:
+  grafana-data:
+
+networks:
+  trading-network:
+    driver: bridge

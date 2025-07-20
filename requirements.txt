@@ -1,0 +1,55 @@
+# Core dependencies
+ccxt>=4.0.0
+pandas>=2.0.0
+numpy>=1.24.0
+influxdb-client>=1.38.0
+redis>=5.0.0
+asyncio-mqtt>=0.16.0
+websockets>=12.0
+aiohttp>=3.9.0
+
+# ML/AI dependencies
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+tensorflow>=2.15.0
+torch>=2.1.0
+transformers>=4.35.0
+ta-lib>=0.4.28
+joblib>=1.3.0
+
+# Data processing
+apache-flink>=1.18.0
+kafka-python>=2.0.2
+confluent-kafka>=2.3.0
+
+# Database
+psycopg2-binary>=2.9.9
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+
+# API and web
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+jwt>=1.3.1
+
+# Monitoring
+prometheus-client>=0.19.0
+grafana-api>=1.0.3
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+loguru>=0.7.2
+schedule>=1.2.0
+
+# Web scraping and social media
+beautifulsoup4>=4.12.0
+feedparser>=6.0.0
+textblob>=0.17.0
+praw>=7.7.0
+tweepy>=4.14.0
+
+# Web3 and blockchain
+web3>=6.0.0
+etherscan-python>=2.1.0
